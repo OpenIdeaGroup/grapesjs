@@ -74,7 +74,10 @@
  * * `canvas:dragdata` - On any dataTransfer parse, `DataTransfer` instance and the `result` are passed as arguments.
  *  By changing `result.content` you're able to customize what is dropped
  * ### Selectors
- * * `selector:add` - Triggers when a new selector/class is created
+ * * `selector:add` - New selector is add. Passes the new selector as an argument
+ * * `selector:remove` - Selector removed. Passes the removed selector as an argument
+ * * `selector:update` - Selector updated. Passes the updated selector as an argument
+ * * `selector:state` - State changed. Passes the new state value as an argument
  * ### RTE
  * * `rte:enable` - RTE enabled. The view, on which RTE is enabled, is passed as an argument
  * * `rte:disable` - RTE disabled. The view, on which RTE is disabled, is passed as an argument
@@ -124,6 +127,12 @@ export default (config = {}) => {
      * @private
      */
     editor: em,
+
+    /**
+     * @property {I18n}
+     * @private
+     */
+    I18n: em.get('I18n'),
 
     /**
      * @property {DomComponents}
@@ -647,6 +656,24 @@ export default (config = {}) => {
     log(msg, opts = {}) {
       em.log(msg, opts);
       return this;
+    },
+
+    /**
+     * Translate label
+     * @param {String} key Label to translate
+     * @param {Object} [opts] Options for the translation
+     * @param {Object} [opts.params] Params for the translation
+     * @param {Boolean} [opts.noWarn] Avoid warnings in case of missing resources
+     * @returns {String}
+     * @example
+     * editor.t('msg');
+     * // use params
+     * editor.t('msg2', { params: { test: 'hello' } });
+     * // custom local
+     * editor.t('msg2', { params: { test: 'hello' }, l: 'it' });
+     */
+    t(...args) {
+      return em.t(...args);
     },
 
     /**

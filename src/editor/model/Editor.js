@@ -1,10 +1,18 @@
-import { isUndefined, isArray, contains, toArray, keys } from 'underscore';
+import {
+  isUndefined,
+  isFunction,
+  isArray,
+  contains,
+  toArray,
+  keys
+} from 'underscore';
 import Backbone from 'backbone';
 import Extender from 'utils/extender';
 import { getModel } from 'utils/mixins';
 
 const deps = [
   require('utils'),
+  require('i18n'),
   require('keymaps'),
   require('undo_manager'),
   require('storage_manager'),
@@ -192,9 +200,9 @@ export default Backbone.Model.extend({
 
     if (Mod.storageKey && Mod.store && Mod.load && sm) {
       cfg.stm = sm;
-      const storables = this.get('storables');
-      storables.push(Mod);
-      this.set('storables', storables);
+      // DomComponents should be load before CSS Composer
+      const mth = name == 'domComponents' ? 'unshift' : 'push';
+      this.get('storables')[mth](Mod);
     }
 
     cfg.em = this;
@@ -410,6 +418,24 @@ export default Backbone.Model.extend({
   },
 
   /**
+   * Change the selector state
+   * @param {String} value State value
+   * @returns {this}
+   */
+  setState(value) {
+    this.set('state', value);
+    return this;
+  },
+
+  /**
+   * Get the current selector state
+   * @returns {String}
+   */
+  getState() {
+    return this.get('state');
+  },
+
+  /**
    * Returns HTML built inside canvas
    * @return {string} HTML string
    * @private
@@ -513,26 +539,23 @@ export default Backbone.Model.extend({
    * @private
    */
   getCacheLoad(force, clb) {
-    var f = force ? 1 : 0;
-    if (this.cacheLoad && !f) return this.cacheLoad;
-    var sm = this.get('StorageManager');
-    var load = [];
+    if (this.cacheLoad && !force) return this.cacheLoad;
+    const sm = this.get('StorageManager');
+    const load = [];
 
     if (!sm) return {};
 
     this.get('storables').forEach(m => {
-      var key = m.storageKey;
-      key = typeof key === 'function' ? key() : key;
-      var keys = key instanceof Array ? key : [key];
-      keys.forEach(k => {
-        load.push(k);
-      });
+      let key = m.storageKey;
+      key = isFunction(key) ? key() : key;
+      const keys = isArray(key) ? key : [key];
+      keys.forEach(k => load.push(k));
     });
 
     sm.load(load, res => {
       this.cacheLoad = res;
       clb && clb(res);
-      setTimeout(() => this.trigger('storage:load', res), 0);
+      setTimeout(() => this.trigger('storage:load', res));
     });
   },
 
@@ -629,6 +652,10 @@ export default Backbone.Model.extend({
     return this.set('dmode', value);
   },
 
+  t(...args) {
+    return this.get('I18n').t(...args);
+  },
+
   /**
    * Returns true if the editor is in absolute mode
    * @returns {Boolean}
@@ -647,7 +674,8 @@ export default Backbone.Model.extend({
       UndoManager,
       Panels,
       Canvas,
-      Keymaps
+      Keymaps,
+      RichTextEditor
     } = this.attributes;
     DomComponents.clear();
     CssComposer.clear();
@@ -655,6 +683,7 @@ export default Backbone.Model.extend({
     Panels.getPanels().reset();
     Canvas.getCanvasView().remove();
     Keymaps.removeAll();
+    RichTextEditor.destroy();
     this.view.remove();
     this.stopListening();
     $(this.config.el)
